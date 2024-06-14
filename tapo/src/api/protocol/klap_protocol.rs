@@ -1,18 +1,18 @@
 use std::fmt;
 use std::process::exit;
+use std::str::FromStr;
 
 use async_trait::async_trait;
-use isahc::{AsyncReadResponseExt, HttpClient, Request};
-use isahc::cookies::CookieJar;
-use isahc::prelude::Configurable;
 use log::{debug, warn};
 use rand::{RngCore, SeedableRng};
 use rand::rngs::StdRng;
+use reqwest::{Client, header, Method, Request, RequestBuilder, StatusCode, Url};
 use serde::de::DeserializeOwned;
+use uuid::Version;
 
 use crate::{Error, TapoResponseError};
 use crate::requests::TapoRequest;
-use crate::responses::{TapoResponse, TapoResponseExt, validate_response};
+use crate::responses::{Status, TapoResponse, TapoResponseExt, validate_response};
 
 use super::discovery_protocol::DiscoveryProtocol;
 use super::klap_cipher::KlapCipher;
@@ -20,8 +20,7 @@ use super::TapoProtocolExt;
 
 #[derive(Debug)]
 pub(crate) struct KlapProtocol {
-    client: HttpClient,
-    cookie_jar: CookieJar,
+    client: Client,
     rng: StdRng,
     url: Option<String>,
     cipher: Option<KlapCipher>,
@@ -49,7 +48,7 @@ impl TapoProtocolExt for KlapProtocol {
         &self,
         request: TapoRequest,
         _with_token: bool,
-    ) -> Result<Option<R>, Error>
+    ) -> Result<Option<R>, anyhow::Error>
     where
         R: fmt::Debug + DeserializeOwned + TapoResponseExt,
     {
@@ -61,29 +60,25 @@ impl TapoProtocolExt for KlapProtocol {
 
         let (payload, seq) = cipher.encrypt(request_string)?;
 
-        let request = Request::post(format!("{url}/request?seq={seq}"))
-            .cookie_jar(self.cookie_jar.clone())
-            .body(payload)
-            .map_err(isahc::Error::from)?;
-
-        let mut response = self.client.send_async(request).await?;
+        let response = self.client.post(format!("{url}/request?seq={seq}"))
+            .body(payload).send().await?;
 
         if !response.status().is_success() {
             warn!("Response error: {}", response.status());
 
             let error = match response.status() {
-                isahc::http::StatusCode::UNAUTHORIZED | isahc::http::StatusCode::FORBIDDEN => {
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
                     TapoResponseError::SessionTimeout
                 }
                 _ => TapoResponseError::InvalidResponse,
             };
 
-            return Err(Error::Tapo(error));
+            return Err(Error::Tapo(error).into());
         }
 
         let response_body = response.bytes().await.map_err(anyhow::Error::from)?;
 
-        let response_decrypted = cipher.decrypt(seq, response_body)?;
+        let response_decrypted = cipher.decrypt(seq, response_body.to_vec())?;
         debug!("Device responded with: {response_decrypted:?}");
 
         let inner_response: TapoResponse<R> = serde_json::from_str(&response_decrypted)?;
@@ -101,10 +96,9 @@ impl TapoProtocolExt for KlapProtocol {
 }
 
 impl KlapProtocol {
-    pub fn new(client: HttpClient) -> Self {
+    pub fn new(client: Client) -> Self {
         Self {
             client,
-            cookie_jar: CookieJar::new(),
             rng: StdRng::from_entropy(),
             url: None,
             cipher: None,
@@ -116,9 +110,7 @@ impl KlapProtocol {
         url: String,
         username: String,
         password: String,
-    ) -> Result<(), Error> {
-        self.cookie_jar.clear();
-
+    ) -> Result<(), anyhow::Error> {
         let auth_hash = KlapCipher::sha256(
             &[
                 KlapCipher::sha1(username.as_bytes()),
@@ -129,7 +121,7 @@ impl KlapProtocol {
             .to_vec();
 
         let local_seed = self.get_local_seed().to_vec();
-        let remote_seed = self.handshake1(&url, &local_seed, &auth_hash).await?;
+        let remote_seed = self.handshake1(&url, local_seed.clone(), &auth_hash).await.unwrap();
 
         self.handshake2(&url, &local_seed, &remote_seed, &auth_hash)
             .await?;
@@ -145,32 +137,30 @@ impl KlapProtocol {
     async fn handshake1(
         &self,
         url: &str,
-        local_seed: &[u8],
+        local_seed: Vec<u8>,
         auth_hash: &[u8],
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, reqwest::Error> {
         debug!("Performing handshake1...");
         let url = format!("{url}/handshake1");
 
-        let request = Request::post(&url)
-            .cookie_jar(self.cookie_jar.clone())
-            .body(local_seed)
-            .map_err(isahc::Error::from)?;
-
-        let mut response = self.client.send_async(request).await?;
+        let response = self.client.post(url)
+            .body(local_seed.clone()).send().await?;
 
         if !response.status().is_success() {
             warn!("Handshake1 error: {}", response.status());
-            return Err(Error::Tapo(TapoResponseError::InvalidResponse));
+            warn!("Handshake1: {:?}", response.text().await.unwrap());
+            exit(1);
         }
 
-        let response_body = response.bytes().await.map_err(anyhow::Error::from)?;
+        let response_body = response.bytes().await.unwrap(); // map_err(anyhow::Error::from)?;
 
         let (remote_seed, server_hash) = response_body.split_at(16);
-        let local_hash = KlapCipher::sha256(&[local_seed, remote_seed, auth_hash].concat());
+        let local_hash = KlapCipher::sha256(&[local_seed, remote_seed.to_vec(), auth_hash.to_vec()].concat());
 
         if local_hash != server_hash {
             warn!("Local hash does not match server hash");
-            return Err(Error::Tapo(TapoResponseError::InvalidCredentials));
+            exit(1);
+            // return Err(Error::Tapo(TapoResponseError::InvalidCredentials));
         }
 
         debug!("Handshake1 OK");
@@ -184,22 +174,19 @@ impl KlapProtocol {
         local_seed: &[u8],
         remote_seed: &[u8],
         auth_hash: &[u8],
-    ) -> Result<(), Error> {
+    ) -> Result<(), reqwest::Error> {
         debug!("Performing handshake2...");
         let url = format!("{url}/handshake2");
 
         let payload = KlapCipher::sha256(&[remote_seed, local_seed, auth_hash].concat());
 
-        let request = Request::post(&url)
-            .cookie_jar(self.cookie_jar.clone())
-            .body(payload.to_vec())
-            .map_err(isahc::Error::from)?;
-
-        let response = self.client.send_async(request).await?;
+        let response = self.client.post(&url)
+            .body(payload.to_vec()).send().await?;
 
         if !response.status().is_success() {
             warn!("Handshake2 error: {}", response.status());
-            return Err(Error::Tapo(TapoResponseError::InvalidResponse));
+            exit(1);
+            // return Err(Error::Tapo(TapoResponseError::InvalidResponse));
         }
 
         debug!("Handshake2 OK");

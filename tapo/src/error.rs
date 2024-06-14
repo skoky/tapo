@@ -40,8 +40,8 @@ pub enum Error {
     #[error("Serde: {0}")]
     Serde(#[from] serde_json::Error),
     /// HTTP Error.
-    #[error("Http: {0}")]
-    Http(#[from] isahc::Error),
+    // #[error("Http: {0}")]
+    // Http(#[from] isahc::Error),
     /// Device not found
     #[error("Device not found")]
     DeviceNotFound,

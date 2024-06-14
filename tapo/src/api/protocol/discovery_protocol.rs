@@ -1,5 +1,6 @@
-use isahc::{AsyncReadResponseExt, HttpClient, Request};
+
 use log::debug;
+use reqwest::Client;
 
 use crate::{Error, TapoResponseError};
 use crate::api::protocol::klap_protocol::KlapProtocol;
@@ -11,11 +12,11 @@ use crate::responses::{TapoResponse, validate_response};
 
 #[derive(Debug, Clone)]
 pub(crate) struct DiscoveryProtocol {
-    client: HttpClient,
+    client: Client,
 }
 
 impl DiscoveryProtocol {
-    pub fn new(client: HttpClient) -> Self {
+    pub fn new(client: Client) -> Self {
         Self { client }
     }
 
@@ -27,44 +28,44 @@ impl DiscoveryProtocol {
         //         self.client.clone(),
         //     )?))
         // } else {
-        debug!("Not supported. Setting up the Klap protocol...");
+        debug!("Setting up the Klap protocol...");
         Ok(TapoProtocolType::Klap(KlapProtocol::new(
             self.client.clone(),
         )))
         // }
     }
 
-    async fn is_passthrough_supported(&self, url: &str) -> Result<bool, Error> {
-        if let Err(Error::Tapo(TapoResponseError::Unknown(code))) = self.test_passthrough(url).await
-        {
-            if code == 1003 {
-                return Ok(false);
-            }
-        }
+    // async fn is_passthrough_supported(&self, url: &str) -> Result<bool, Error> {
+    //     if let Err(Error::Tapo(TapoResponseError::Unknown(code))) = self.test_passthrough(url).await
+    //     {
+    //         if code == 1003 {
+    //             return Ok(false);
+    //         }
+    //     }
+    //
+    //     Ok(true)
+    // }
 
-        Ok(true)
-    }
-
-    async fn test_passthrough(&self, url: &str) -> Result<(), Error> {
-        let request = TapoRequest::ComponentNegotiation(TapoParams::new(EmptyParams));
-        let request_string = serde_json::to_string(&request)?;
-        debug!("Component negotiation request: {request_string}");
-
-        let request = Request::post(url)
-            .body(request_string)
-            .map_err(isahc::Error::from)?;
-
-        let response = self
-            .client
-            .send_async(request)
-            .await?
-            .json::<TapoResponse<serde_json::Value>>()
-            .await?;
-
-        debug!("Device responded with: {response:?}");
-
-        validate_response(&response)?;
-
-        Ok(())
-    }
+    // async fn test_passthrough(&self, url: &str) -> Result<(), reqwest::Error> {
+    //     let request = TapoRequest::ComponentNegotiation(TapoParams::new(EmptyParams));
+    //     let request_string = serde_json::to_string(&request)?;
+    //     debug!("Component negotiation request: {request_string}");
+    //
+    //     let request = self.client.post(url)
+    //         .body(request_string).send().await?;
+    //
+    //
+    //     let response = self
+    //         .client
+    //         .send_async(request)
+    //         .await?
+    //         .json::<TapoResponse<serde_json::Value>>()
+    //         .await?;
+    //
+    //     debug!("Device responded with: {response:?}");
+    //
+    //     validate_response(&response)?;
+    //
+    //     Ok(())
+    // }
 }

@@ -2,9 +2,8 @@ use std::fmt;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use isahc::prelude::Configurable;
-use isahc::HttpClient;
 use log::debug;
+use reqwest::Client;
 use serde::de::DeserializeOwned;
 
 use crate::api::protocol::{TapoProtocol, TapoProtocolExt};
@@ -665,23 +664,24 @@ impl ApiClient {
         Ok(response.result)
     }
 
-    fn get_protocol_mut(&mut self) -> Result<&mut TapoProtocol, Error> {
+    fn get_protocol_mut(&mut self) -> Result<&mut TapoProtocol, anyhow::Error> {
         if self.protocol.is_none() {
             let timeout = self.timeout.unwrap_or_else(|| Duration::from_secs(30));
 
-            let client = HttpClient::builder()
-                .title_case_headers(true)
-                .timeout(timeout)
+            let client = Client::builder()
+                .cookie_store(true)
+                // .connection_verbose(true)
+                .http1_title_case_headers() // important for TAPO to work
                 .build()?;
             let protocol = TapoProtocol::new(client);
             self.protocol.replace(protocol);
         }
 
-        self.protocol.as_mut().ok_or_else(|| {
+        Ok(self.protocol.as_mut().ok_or_else(|| {
             Error::Other(anyhow::anyhow!(
                 "The protocol should have been initialized already."
             ))
-        })
+        })?)
     }
 
     fn get_protocol(&self) -> Result<&TapoProtocol, Error> {

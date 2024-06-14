@@ -1,7 +1,7 @@
 use std::fmt;
 
 use async_trait::async_trait;
-use isahc::HttpClient;
+use reqwest::Client;
 use serde::de::DeserializeOwned;
 
 use crate::requests::TapoRequest;
@@ -27,7 +27,7 @@ pub(crate) trait TapoProtocolExt {
         &self,
         request: TapoRequest,
         with_token: bool,
-    ) -> Result<Option<R>, Error>
+    ) -> Result<Option<R>, anyhow::Error>
     where
         R: fmt::Debug + DeserializeOwned + TapoResponseExt;
     fn clone_as_discovery(&self) -> DiscoveryProtocol;
@@ -85,7 +85,7 @@ impl TapoProtocolExt for TapoProtocol {
         &self,
         request: TapoRequest,
         with_token: bool,
-    ) -> Result<Option<R>, Error>
+    ) -> Result<Option<R>, anyhow::Error>
     where
         R: fmt::Debug + DeserializeOwned + TapoResponseExt,
     {
@@ -108,7 +108,7 @@ impl TapoProtocolExt for TapoProtocol {
 }
 
 impl TapoProtocol {
-    pub fn new(client: HttpClient) -> Self {
+    pub fn new(client: Client) -> Self {
         Self {
             protocol: TapoProtocolType::Discovery(DiscoveryProtocol::new(client)),
         }
