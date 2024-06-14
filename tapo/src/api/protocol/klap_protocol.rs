@@ -1,17 +1,18 @@
 use std::fmt;
+use std::process::exit;
 
 use async_trait::async_trait;
+use isahc::{AsyncReadResponseExt, HttpClient, Request};
 use isahc::cookies::CookieJar;
 use isahc::prelude::Configurable;
-use isahc::{AsyncReadResponseExt, HttpClient, Request};
 use log::{debug, warn};
-use rand::rngs::StdRng;
 use rand::{RngCore, SeedableRng};
+use rand::rngs::StdRng;
 use serde::de::DeserializeOwned;
 
-use crate::requests::TapoRequest;
-use crate::responses::{validate_response, TapoResponse, TapoResponseExt};
 use crate::{Error, TapoResponseError};
+use crate::requests::TapoRequest;
+use crate::responses::{TapoResponse, TapoResponseExt, validate_response};
 
 use super::discovery_protocol::DiscoveryProtocol;
 use super::klap_cipher::KlapCipher;
@@ -123,9 +124,9 @@ impl KlapProtocol {
                 KlapCipher::sha1(username.as_bytes()),
                 KlapCipher::sha1(password.as_bytes()),
             ]
-            .concat(),
+                .concat(),
         )
-        .to_vec();
+            .to_vec();
 
         let local_seed = self.get_local_seed().to_vec();
         let remote_seed = self.handshake1(&url, &local_seed, &auth_hash).await?;

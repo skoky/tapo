@@ -1,7 +1,12 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 
-use openssl::sha::{Sha1, Sha256};
-use openssl::symm::{decrypt, encrypt, Cipher};
+use aes::Aes128;
+use block_modes::{BlockMode, Cbc};
+use block_modes::block_padding::Pkcs7;
+use sha1::Sha1;
+use sha2::{Digest, Sha256};
+
+type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
 #[derive(Debug)]
 pub(super) struct KlapCipher {
@@ -32,12 +37,9 @@ impl KlapCipher {
     pub fn encrypt(&self, data: String) -> anyhow::Result<(Vec<u8>, i32)> {
         let seq = self.seq.fetch_add(1, Ordering::Relaxed) + 1;
 
-        let cipher_bytes = encrypt(
-            Cipher::aes_128_cbc(),
-            &self.key,
-            Some(&self.iv_seq(seq)),
-            data.as_bytes(),
-        )?;
+        let ivv = self.iv_seq(seq);
+        let cipher = Aes128Cbc::new_from_slices(&self.key, &ivv)?;
+        let cipher_bytes = cipher.encrypt_vec(data.as_bytes());
 
         let signature = Self::sha256(
             &[
@@ -54,12 +56,11 @@ impl KlapCipher {
     }
 
     pub fn decrypt(&self, seq: i32, cipher_bytes: Vec<u8>) -> anyhow::Result<String> {
-        let decrypted_bytes = decrypt(
-            Cipher::aes_128_cbc(),
-            &self.key,
-            Some(&self.iv_seq(seq)),
-            &cipher_bytes[32..],
-        )?;
+
+        let ivv = self.iv_seq(seq);
+        let cipher = Aes128Cbc::new_from_slices(&self.key, &ivv)?;
+        let decrypted_bytes = cipher.decrypt_vec(&cipher_bytes[32..])?;
+
         let decrypted = std::str::from_utf8(&decrypted_bytes)?.to_string();
 
         Ok(decrypted)
@@ -101,12 +102,12 @@ impl KlapCipher {
     pub fn sha256(value: &[u8]) -> [u8; 32] {
         let mut hasher = Sha256::new();
         hasher.update(value);
-        hasher.finish()
+        hasher.finalize().as_slice().try_into().expect("Slice with incorrect length")
     }
 
     pub fn sha1(value: &[u8]) -> [u8; 20] {
         let mut hasher = Sha1::new();
         hasher.update(value);
-        hasher.finish()
+        hasher.finalize().as_slice().try_into().expect("Slice with incorrect length")
     }
 }

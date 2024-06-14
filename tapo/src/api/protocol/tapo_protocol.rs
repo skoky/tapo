@@ -10,7 +10,7 @@ use crate::Error;
 
 use super::{
     discovery_protocol::DiscoveryProtocol, klap_protocol::KlapProtocol,
-    passthrough_protocol::PassthroughProtocol,
+    // passthrough_protocol::PassthroughProtocol,
 };
 
 #[derive(Debug, Clone)]
@@ -36,7 +36,7 @@ pub(crate) trait TapoProtocolExt {
 #[derive(Debug)]
 pub(crate) enum TapoProtocolType {
     Discovery(DiscoveryProtocol),
-    Passthrough(PassthroughProtocol),
+    // Passthrough(PassthroughProtocol),
     Klap(KlapProtocol),
 }
 
@@ -44,7 +44,7 @@ impl Clone for TapoProtocolType {
     fn clone(&self) -> Self {
         match self {
             Self::Discovery(protocol) => Self::Discovery(protocol.clone()),
-            Self::Passthrough(protocol) => Self::Discovery(protocol.clone_as_discovery()),
+            // Self::Passthrough(protocol) => Self::Discovery(protocol.clone_as_discovery()),
             Self::Klap(protocol) => Self::Discovery(protocol.clone_as_discovery()),
         }
     }
@@ -63,9 +63,9 @@ impl TapoProtocolExt for TapoProtocol {
         }
 
         match &mut self.protocol {
-            TapoProtocolType::Passthrough(protocol) => {
-                protocol.login(url, username, password).await
-            }
+            // TapoProtocolType::Passthrough(protocol) => {
+            //     protocol.login(url, username, password).await
+            // }
             TapoProtocolType::Klap(protocol) => protocol.login(url, username, password).await,
             _ => Err(anyhow::anyhow!("The protocol discovery should have happened already").into()),
         }
@@ -73,9 +73,9 @@ impl TapoProtocolExt for TapoProtocol {
 
     async fn refresh_session(&mut self, username: String, password: String) -> Result<(), Error> {
         match &mut self.protocol {
-            TapoProtocolType::Passthrough(protocol) => {
-                protocol.refresh_session(username, password).await
-            }
+            // TapoProtocolType::Passthrough(protocol) => {
+            //     protocol.refresh_session(username, password).await
+            // }
             TapoProtocolType::Klap(protocol) => protocol.refresh_session(username, password).await,
             _ => Err(anyhow::anyhow!("The protocol discovery should have happened already").into()),
         }
@@ -90,9 +90,9 @@ impl TapoProtocolExt for TapoProtocol {
         R: fmt::Debug + DeserializeOwned + TapoResponseExt,
     {
         match &self.protocol {
-            TapoProtocolType::Passthrough(protocol) => {
-                protocol.execute_request(request, with_token).await
-            }
+            // TapoProtocolType::Passthrough(protocol) => {
+            //     protocol.execute_request(request, with_token).await
+            // }
             TapoProtocolType::Klap(protocol) => protocol.execute_request(request, with_token).await,
             _ => Err(anyhow::anyhow!("The protocol discovery should have happened already").into()),
         }
@@ -101,7 +101,7 @@ impl TapoProtocolExt for TapoProtocol {
     fn clone_as_discovery(&self) -> DiscoveryProtocol {
         match &self.protocol {
             TapoProtocolType::Discovery(protocol) => protocol.clone(),
-            TapoProtocolType::Passthrough(protocol) => protocol.clone_as_discovery(),
+            // TapoProtocolType::Passthrough(protocol) => protocol.clone_as_discovery(),
             TapoProtocolType::Klap(protocol) => protocol.clone_as_discovery(),
         }
     }
