@@ -1,6 +1,7 @@
 use std::fmt;
 use std::process::exit;
 use std::str::FromStr;
+use anyhow::anyhow;
 
 use async_trait::async_trait;
 use log::{debug, warn};
@@ -139,7 +140,7 @@ impl KlapProtocol {
         url: &str,
         local_seed: Vec<u8>,
         auth_hash: &[u8],
-    ) -> Result<Vec<u8>, reqwest::Error> {
+    ) -> Result<Vec<u8>, anyhow::Error> {
         debug!("Performing handshake1...");
         let url = format!("{url}/handshake1");
 
@@ -149,7 +150,7 @@ impl KlapProtocol {
         if !response.status().is_success() {
             warn!("Handshake1 error: {}", response.status());
             warn!("Handshake1: {:?}", response.text().await.unwrap());
-            exit(1);
+            return Err(anyhow!("handshake1 failed"));
         }
 
         let response_body = response.bytes().await.unwrap(); // map_err(anyhow::Error::from)?;
@@ -159,7 +160,7 @@ impl KlapProtocol {
 
         if local_hash != server_hash {
             warn!("Local hash does not match server hash");
-            exit(1);
+            return Err(anyhow!("handshake1 response decodeing failed failed"));
             // return Err(Error::Tapo(TapoResponseError::InvalidCredentials));
         }
 
@@ -174,7 +175,7 @@ impl KlapProtocol {
         local_seed: &[u8],
         remote_seed: &[u8],
         auth_hash: &[u8],
-    ) -> Result<(), reqwest::Error> {
+    ) -> Result<(), anyhow::Error> {
         debug!("Performing handshake2...");
         let url = format!("{url}/handshake2");
 
@@ -185,8 +186,7 @@ impl KlapProtocol {
 
         if !response.status().is_success() {
             warn!("Handshake2 error: {}", response.status());
-            exit(1);
-            // return Err(Error::Tapo(TapoResponseError::InvalidResponse));
+            return Err(anyhow!("handshake2 failed"));
         }
 
         debug!("Handshake2 OK");
