@@ -1,5 +1,6 @@
 use std::fmt;
 use std::str::FromStr;
+use std::time::Duration;
 use anyhow::anyhow;
 
 use async_trait::async_trait;
@@ -61,6 +62,7 @@ impl TapoProtocolExt for KlapProtocol {
         let (payload, seq) = cipher.encrypt(request_string)?;
 
         let response = self.client.post(format!("{url}/request?seq={seq}"))
+            .timeout(Duration::from_millis(2000))
             .body(payload).send().await?;
 
         if !response.status().is_success() {
@@ -145,6 +147,7 @@ impl KlapProtocol {
         let url = format!("{url}/handshake1");
 
         let response = self.client.post(url)
+            .timeout(Duration::from_millis(2000))
             .body(local_seed.clone()).send().await?;
 
         if response.status() == StatusCode::NOT_FOUND {
@@ -164,7 +167,7 @@ impl KlapProtocol {
 
         if local_hash != server_hash {
             warn!("Local hash does not match server hash");
-            return Err(anyhow!("handshake1 response decodeing failed failed"));
+            return Err(anyhow!("handshake1 response decoding failed failed; wrong password?"));
             // return Err(Error::Tapo(TapoResponseError::InvalidCredentials));
         }
 
@@ -186,6 +189,7 @@ impl KlapProtocol {
         let payload = KlapCipher::sha256(&[remote_seed, local_seed, auth_hash].concat());
 
         let response = self.client.post(&url)
+            .timeout(Duration::from_millis(2000))
             .body(payload.to_vec()).send().await?;
 
         if !response.status().is_success() {
