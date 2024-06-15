@@ -121,7 +121,8 @@ impl KlapProtocol {
             .to_vec();
 
         let local_seed = self.get_local_seed().to_vec();
-        let remote_seed = self.handshake1(&url, local_seed.clone(), &auth_hash).await.unwrap();
+        let remote_seed = self.handshake1(&url, local_seed.clone(), &auth_hash).await
+            .map_err(|e| anyhow!(e.to_string()))?;
 
         self.handshake2(&url, &local_seed, &remote_seed, &auth_hash)
             .await?;
@@ -148,11 +149,11 @@ impl KlapProtocol {
 
         if !response.status().is_success() {
             warn!("Handshake1 error: {}", response.status());
-            warn!("Handshake1: {:?}", response.text().await.unwrap());
+            // warn!("Handshake1: {:?}", response.text().await.unwrap());
             return Err(anyhow!("handshake1 failed"));
         }
 
-        let response_body = response.bytes().await.unwrap(); // map_err(anyhow::Error::from)?;
+        let response_body = response.bytes().await.map_err(anyhow::Error::from)?;
 
         let (remote_seed, server_hash) = response_body.split_at(16);
         let local_hash = KlapCipher::sha256(&[local_seed, remote_seed.to_vec(), auth_hash.to_vec()].concat());
