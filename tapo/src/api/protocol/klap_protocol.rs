@@ -64,7 +64,7 @@ impl TapoProtocolExt for KlapProtocol {
             .body(payload).send().await?;
 
         if !response.status().is_success() {
-            warn!("Response error: {}", response.status());
+            debug!("Response error: {}", response.status());
 
             let error = match response.status() {
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
@@ -147,8 +147,12 @@ impl KlapProtocol {
         let response = self.client.post(url)
             .body(local_seed.clone()).send().await?;
 
+        if response.status() == StatusCode::NOT_FOUND {
+            return Err(anyhow!("No response"))
+        }
+
         if !response.status().is_success() {
-            warn!("Handshake1 error: {}", response.status());
+            debug!("Handshake1 error: {}", response.status());
             // warn!("Handshake1: {:?}", response.text().await.unwrap());
             return Err(anyhow!("handshake1 failed"));
         }
