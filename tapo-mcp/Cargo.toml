@@ -9,6 +9,7 @@ axum = "0.8"
 base64 = { workspace = true }
 config = "0.15"
 rmcp = { version = "3.1", features = ["server", "macros", "transport-streamable-http-server"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 subtle = "2.6"
