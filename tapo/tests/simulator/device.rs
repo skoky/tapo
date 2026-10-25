@@ -42,6 +42,7 @@ impl SimulatedDevice {
     /// The device that the fixture file at `fixture` describes.
     pub fn new(fixture: impl AsRef<Path>) -> Self {
         init_logging();
+        install_crypto_provider();
 
         Self {
             fixture: Fixture::load(fixture.as_ref()),
@@ -138,6 +139,12 @@ fn init_logging() {
     let _ = env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
         .is_test(true)
         .try_init();
+}
+
+/// `tapo` is built with reqwest's `rustls-no-provider` feature, so both the
+/// client under test and the simulator's TLS server need a provider installed.
+fn install_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
 }
 
 /// A loopback address that no other device takes, in this test binary or
