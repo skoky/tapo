@@ -134,11 +134,14 @@ pub(crate) fn local_day<Tz: TimeZone>(
     ))
 }
 
-/// Installs the rustls crypto provider for tests that build an HTTPS client.
+/// Returns a builder for the HTTP client.
 ///
-/// `tapo` is built with reqwest's `rustls-no-provider` feature, so reqwest panics if no
-/// provider is installed before the first client is created.
-#[cfg(test)]
-pub(crate) fn install_crypto_provider() {
+/// reqwest is built with its `rustls-no-provider` feature and panics if no rustls crypto
+/// provider is installed when the client is built. With the `rustls-ring` feature, `ring`
+/// is installed as the process-wide default, unless the application already installed one.
+pub(crate) fn http_client_builder() -> reqwest::ClientBuilder {
+    #[cfg(feature = "rustls-ring")]
     let _ = rustls::crypto::ring::default_provider().install_default();
+
+    reqwest::Client::builder()
 }

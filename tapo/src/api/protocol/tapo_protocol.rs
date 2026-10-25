@@ -330,6 +330,7 @@ pub(super) fn request_error(status: StatusCode) -> Error {
 #[cfg(test)]
 mod tests {
     use crate::responses::validate_response;
+    use crate::utils::http_client_builder;
 
     use super::*;
 
@@ -370,9 +371,9 @@ mod tests {
 
     #[tokio::test]
     async fn unreachable_device_does_not_fall_back_to_aes_ssl() {
-        crate::utils::install_crypto_provider();
-
-        let error: Error = Client::new()
+        let error: Error = http_client_builder()
+            .build()
+            .unwrap()
             .post("https://127.0.0.1:0/")
             .send()
             .await

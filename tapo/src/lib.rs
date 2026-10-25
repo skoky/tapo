@@ -11,7 +11,12 @@
 //!
 //! # Features
 //!
-//! All features are off by default.
+//! - `rustls-ring` (on by default) - installs [`ring`](https://docs.rs/ring) as the process-wide
+//!   [rustls crypto provider](https://docs.rs/rustls/latest/rustls/crypto/struct.CryptoProvider.html)
+//!   when the first HTTP client is built, unless the application already installed one.
+//!   Without it, the application must install a provider before connecting to a device, or the connection panics.
+//!
+//! All other features are off by default.
 //!
 //! - `debug` - exposes additional methods that are valuable in debug scenarios or when investigating new device functionality.
 //! - `json-schema` - derives [`schemars::JsonSchema`](https://docs.rs/schemars) on public types so they can be serialized into a JSON Schema.

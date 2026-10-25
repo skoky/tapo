@@ -6,9 +6,25 @@ file. This change log follows the conventions of
 
 ## [Rust Unreleased][Unreleased]
 
+### Added
+
+- `rustls-ring` feature: added and enabled by default. It installs `ring` as the process-wide rustls crypto provider when the first HTTP client is built, unless the application already installed one. With it disabled, the application must install a provider before connecting to a device. (thanks to @skoky)
+
+### Changed
+
+- `ApiClient`: TLS connections now use the `ring` crypto provider instead of `aws-lc-rs`, so building `tapo` no longer compiles `aws-lc-sys` and no longer needs CMake. (thanks to @skoky)
+
 ## [Python Unreleased][Unreleased]
 
+### Changed
+
+- `ApiClient`: TLS connections now use the `ring` crypto provider instead of `aws-lc-rs`, so building the package from source no longer compiles `aws-lc-sys` and no longer needs CMake. (thanks to @skoky)
+
 ## [MCP Unreleased][Unreleased]
+
+### Changed
+
+- TLS connections to devices now use the `ring` crypto provider instead of `aws-lc-rs`, so building the server no longer compiles `aws-lc-sys` and no longer needs CMake. (thanks to @skoky)
 
 ## [MCP v0.6.0][tapo-mcp-v0.6.0] - 2026-10-24
 

@@ -4,3 +4,4 @@
 /.idea
 /target
 __pycache__/
+.env

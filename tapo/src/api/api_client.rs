@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use log::{debug, warn};
-use reqwest::Client;
 use serde::de::DeserializeOwned;
 
 use crate::error::{Error, TapoResponseError};
@@ -24,7 +23,7 @@ use crate::responses::{
     ScheduleRuleResult, SmartCamControlChildResult, TapoMultipleResponse, TapoResponseExt,
     TapoResult, Timer, TimerListResultRaw, TimezoneResult, TimezoneResultRaw, validate_response,
 };
-use crate::utils::unix_timestamp_seconds;
+use crate::utils::{http_client_builder, unix_timestamp_seconds};
 
 #[cfg(feature = "debug")]
 use crate::requests::SmartCamGetAppComponentListParams;
@@ -1273,7 +1272,7 @@ impl ApiClient {
         auth_protocol: AuthProtocol,
     ) -> Result<(String, u16), Error> {
         if self.protocol.is_none() {
-            let mut builder = Client::builder()
+            let mut builder = http_client_builder()
                 .http1_title_case_headers()
                 .timeout(self.timeout())
                 .danger_accept_invalid_certs(true);
