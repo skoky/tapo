@@ -6,6 +6,11 @@ file. This change log follows the conventions of
 
 ## [Rust Unreleased][Unreleased]
 
+### Added
+
+- `HubIrHandler`: added `start_ir_receive_mode`, `get_ir_receive_status` and `stop_ir_receive_mode`, which let the H110 learn an IR signal from a physical remote, and the `IrReceiveStatus` response.
+- `IrRemoteHandler`: added `set_key_info`, which adds, changes or removes the keys stored on an IR remote, e.g. to store a learned signal.
+
 ## [Python Unreleased][Unreleased]
 
 ## [MCP Unreleased][Unreleased]

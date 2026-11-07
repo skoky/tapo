@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::requests::{SendIrCmdByIdParams, TapoParams, TapoRequest};
+use crate::requests::{SendIrCmdByIdParams, SetKeyInfoParams, TapoParams, TapoRequest};
 use crate::responses::IrRemoteResult;
 
 tapo_child_handler! {
@@ -43,6 +43,38 @@ impl IrRemoteHandler {
     pub async fn send_key_by_name(&self, key_name: impl Into<String>) -> Result<(), Error> {
         let request =
             TapoRequest::SendIrCmdById(TapoParams::new(SendIrCmdByIdParams::new(key_name)));
+
+        self.client
+            .read()
+            .await
+            .control_child::<serde_json::Value>(self.device_id.clone(), request)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Adds, changes or removes keys stored on this remote.
+    ///
+    /// # Arguments
+    ///
+    /// * `edit_key_list` - the keys to add or change, as the hub's own JSON objects:
+    ///   `name`, `id` (`-1` for a learned key), `display_name` (base64), `pwm`, `pulse`,
+    ///   `icon`, `order` and `type`. A learned signal's `pwm` and `pulse` come from
+    ///   [`HubIrHandler::get_ir_receive_status`](crate::HubIrHandler::get_ir_receive_status).
+    /// * `delete_key_names` - the [`name`](crate::responses::IrRemoteKey::name)s of the
+    ///   keys to remove
+    ///
+    /// The hub may store a new key under another name than the one requested; read the
+    /// remote's key list back to find it.
+    pub async fn set_key_info(
+        &self,
+        edit_key_list: Vec<serde_json::Value>,
+        delete_key_names: Vec<String>,
+    ) -> Result<(), Error> {
+        let request = TapoRequest::SetKeyInfo(Box::new(TapoParams::new(SetKeyInfoParams::new(
+            edit_key_list,
+            delete_key_names,
+        ))));
 
         self.client
             .read()

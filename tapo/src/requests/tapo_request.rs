@@ -7,11 +7,12 @@ use super::{
     GetEnergyDataParams, GetPowerDataParams, GetScheduleRulesParams, GetTriggerLogsParams,
     LightingEffect, MultipleRequestParams, PlayAlarmParams, RemoveScheduleRulesParams,
     RemoveTimersParams, ScheduleRuleRaw, SecurePassthroughParams, SegmentEffect,
-    SendIrCmdByIdParams, SmartCamAddMotorPositionParams, SmartCamControlChildParams,
-    SmartCamDeletePresetParams, SmartCamGetChildDeviceListParams, SmartCamGetDeviceInfoParams,
-    SmartCamGetGeneralDeviceListParams, SmartCamGetPresetConfigParams, SmartCamGetTimezoneParams,
-    SmartCamMotorMoveParams, SmartCamMotorMoveToPresetParams, SmartCamRebootDeviceParams,
-    SmartCamSearchDateWithVideoParams, SmartCamSearchVideoWithUtcParams, SmartCamSoftResetParams,
+    SendIrCmdByIdParams, SetKeyInfoParams, SmartCamAddMotorPositionParams,
+    SmartCamControlChildParams, SmartCamDeletePresetParams, SmartCamGetChildDeviceListParams,
+    SmartCamGetDeviceInfoParams, SmartCamGetGeneralDeviceListParams, SmartCamGetPresetConfigParams,
+    SmartCamGetTimezoneParams, SmartCamMotorMoveParams, SmartCamMotorMoveToPresetParams,
+    SmartCamRebootDeviceParams, SmartCamSearchDateWithVideoParams,
+    SmartCamSearchVideoWithUtcParams, SmartCamSoftResetParams,
 };
 
 #[cfg(feature = "debug")]
@@ -59,6 +60,15 @@ pub(crate) enum TapoRequest {
     GetDeviceInfoCamelCase(TapoParams<EmptyParams>),
     #[serde(rename = "sendIrCmdById")]
     SendIrCmdById(TapoParams<SendIrCmdByIdParams>),
+    #[serde(rename = "setKeyInfo")]
+    SetKeyInfo(Box<TapoParams<SetKeyInfoParams>>),
+    // IR learning requests, sent to the H110 hub itself.
+    #[serde(rename = "startIrReceiveMode")]
+    StartIrReceiveMode(TapoParams<EmptyParams>),
+    #[serde(rename = "getIrReceiveStatus")]
+    GetIrReceiveStatus(TapoParams<EmptyParams>),
+    #[serde(rename = "stopIrReceiveMode")]
+    StopIrReceiveMode(TapoParams<EmptyParams>),
     // Smart Camera requests
     #[serde(rename = "getDeviceInfo")]
     SmartCamGetDeviceInfo(TapoParams<SmartCamGetDeviceInfoParams>),

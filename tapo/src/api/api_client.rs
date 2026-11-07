@@ -19,10 +19,11 @@ use crate::requests::{
 };
 use crate::responses::{
     AddScheduleRuleResult, AddTimerResult, ControlChildResult, CurrentPowerResult,
-    DecodableResultExt, EnergyDataResult, EnergyDataResultRaw, EnergyUsageResult, PowerDataResult,
-    PowerDataResultRaw, PowerState, RecordingDownloadResult, ScheduleRuleListResultRaw,
-    ScheduleRuleResult, SmartCamControlChildResult, TapoMultipleResponse, TapoResponseExt,
-    TapoResult, Timer, TimerListResultRaw, TimezoneResult, TimezoneResultRaw, validate_response,
+    DecodableResultExt, EnergyDataResult, EnergyDataResultRaw, EnergyUsageResult, IrReceiveStatus,
+    PowerDataResult, PowerDataResultRaw, PowerState, RecordingDownloadResult,
+    ScheduleRuleListResultRaw, ScheduleRuleResult, SmartCamControlChildResult,
+    TapoMultipleResponse, TapoResponseExt, TapoResult, Timer, TimerListResultRaw, TimezoneResult,
+    TimezoneResultRaw, validate_response,
 };
 use crate::utils::unix_timestamp_seconds;
 
@@ -1386,6 +1387,35 @@ impl ApiClient {
 
     pub(crate) async fn stop_alarm(&self) -> Result<(), Error> {
         let request = TapoRequest::StopAlarm(TapoParams::new(EmptyParams));
+
+        self.protocol()?
+            .execute_request::<serde_json::Value>(request)
+            .await?;
+
+        Ok(())
+    }
+
+    pub(crate) async fn start_ir_receive_mode(&self) -> Result<(), Error> {
+        let request = TapoRequest::StartIrReceiveMode(TapoParams::new(EmptyParams));
+
+        self.protocol()?
+            .execute_request::<serde_json::Value>(request)
+            .await?;
+
+        Ok(())
+    }
+
+    pub(crate) async fn get_ir_receive_status(&self) -> Result<IrReceiveStatus, Error> {
+        let request = TapoRequest::GetIrReceiveStatus(TapoParams::new(EmptyParams));
+
+        self.protocol()?
+            .execute_request(request)
+            .await?
+            .ok_or_else(|| Error::Tapo(TapoResponseError::EmptyResult))
+    }
+
+    pub(crate) async fn stop_ir_receive_mode(&self) -> Result<(), Error> {
+        let request = TapoRequest::StopIrReceiveMode(TapoParams::new(EmptyParams));
 
         self.protocol()?
             .execute_request::<serde_json::Value>(request)
